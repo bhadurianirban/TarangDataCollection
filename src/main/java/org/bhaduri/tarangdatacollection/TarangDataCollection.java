@@ -9,7 +9,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JSpinner;
 import org.bhaduri.tarangdatacollection.webcrawler.WebDataRetrieve;
+import org.quartz.CronScheduleBuilder;
 import static org.quartz.CronScheduleBuilder.cronSchedule;
+import org.quartz.CronTrigger;
+import org.quartz.DailyTimeIntervalScheduleBuilder;
+import org.quartz.DailyTimeIntervalTrigger;
 import org.quartz.DateBuilder;
 import static org.quartz.JobBuilder.newJob;
 import org.quartz.JobDetail;
@@ -19,10 +23,12 @@ import org.quartz.SchedulerException;
 import org.quartz.SchedulerFactory;
 import org.quartz.SimpleScheduleBuilder;
 import org.quartz.SimpleTrigger;
+import org.quartz.TimeOfDay;
 import org.quartz.Trigger;
 import org.quartz.TriggerBuilder;
 import static org.quartz.TriggerBuilder.newTrigger;
 import org.quartz.impl.StdSchedulerFactory;
+import org.quartz.impl.calendar.HolidayCalendar;
 
 /**
  *
@@ -40,15 +46,28 @@ public class TarangDataCollection {
                     .withIdentity("WebDataRetrieve", "WebCrawler")
                     .build();
 
-            //Date startTime = tomorrowAt(17, 50, 0);
+            TimeOfDay startTime = createStartTime();
+            TimeOfDay endTime = createEndTime();
+            HolidayCalendar cal = new HolidayCalendar();
+            cal.addExcludedDate( new Date(2024, 6, 17));
+            sched.addCalendar("Holidays", cal, false,false);
             
-            SimpleTrigger simpleTrigger 
+            
+            
+            //SimpleScheduleBuilder schedule = SimpleScheduleBuilder.simpleSchedule().withIntervalInSeconds(5).repeatForever();
+            DailyTimeIntervalScheduleBuilder schedule = DailyTimeIntervalScheduleBuilder
+                    .dailyTimeIntervalSchedule()
+                    .onMondayThroughFriday()
+                    .startingDailyAt(startTime).endingDailyAt(endTime).withIntervalInSeconds(5);
+            
+            DailyTimeIntervalTrigger simpleTrigger 
                = TriggerBuilder
                 .newTrigger()
                 .withIdentity("Hello-trigger-name")
                 .forJob(job)
-                .withSchedule(SimpleScheduleBuilder.simpleSchedule().withIntervalInSeconds(5).repeatForever())
+                .withSchedule(schedule).modifiedByCalendar("Holidays")
                 .build();
+            
 
             sched.scheduleJob(job, simpleTrigger);
             sched.start();
@@ -57,9 +76,14 @@ public class TarangDataCollection {
         }
     }
 
-    public static Date tomorrowAt(int hour, int minute, int second) {
-        return DateBuilder.todayAt(hour, minute, second);
+    public static TimeOfDay createStartTime() {
+        TimeOfDay timeOfDay = TimeOfDay.hourAndMinuteAndSecondFromDate(DateBuilder.dateOf(21, 57, 0));
+        return timeOfDay;
+    }
+    
+    public static TimeOfDay createEndTime() {
+        TimeOfDay timeOfDay = TimeOfDay.hourAndMinuteAndSecondFromDate(DateBuilder.dateOf(21, 58, 0));
+        return timeOfDay;
                 
     }
-
 }
